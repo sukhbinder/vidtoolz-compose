@@ -53,17 +53,26 @@ def compose_video(fname, debug=False, valid=False):
     for i, l in enumerate(lnos[:-1]):
         file = os.path.join(fpath, f"file_{i}.txt")
         cmdline = lines[l].strip().replace("#", "").replace("=", " ").split(",")
-        cmdline = (
-            [cmdline[0].strip()] + [file] + ["--" + cmd.strip() for cmd in cmdline[1:]]
-        )
+
+        is_next_comment_line = lines[l + 1].startswith("#") and l + 1 <= len(lines)
+        if not is_next_comment_line:
+            cmdline = (
+                [cmdline[0].strip()]
+                + [file]
+                + ["--" + cmd.strip() for cmd in cmdline[1:]]
+            )
+        else:
+            cmdline = [cmdline[0].strip()] + ["--" + cmd.strip() for cmd in cmdline[1:]]
+
         cmdstr = " ".join(cmdline)
         cmdline2 = shlex.split(cmdstr)
         commands.append(cmdline2)
         # sellines = lines[l:lnos[i+1]]
-        with open(file, "w") as fout:
-            sellines = lines[l + 1 : lnos[i + 1]]
-            sellines[-1] = sellines[-1].strip()
-            fout.writelines(sellines)
+        if not is_next_comment_line:
+            with open(file, "w") as fout:
+                sellines = lines[l + 1 : lnos[i + 1]]
+                sellines[-1] = sellines[-1].strip()
+                fout.writelines(sellines)
 
     with open(os.path.join(fpath, "cmds.txt"), "w") as fout:
         for cmd in commands:
@@ -100,8 +109,11 @@ def check_cmd(command):
 
 
 def create_parser(subparser):
-    parser = subparser.add_parser("compose", description="Compose Videos using the supplied compose_vid file", 
-                                   formatter_class=argparse.RawTextHelpFormatter)
+    parser = subparser.add_parser(
+        "compose",
+        description="Compose Videos using the supplied compose_vid file",
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
     # Add subprser arguments here.
     parser.add_argument("input", help=EXAMPLE_TEXT)
     parser.add_argument(
