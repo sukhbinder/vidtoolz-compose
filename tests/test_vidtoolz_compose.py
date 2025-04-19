@@ -206,12 +206,13 @@ video2.mov
 """
     input_file = tmp_path / "nocommands.txt"
     input_file.write_text(content)
-    w.compose_video(str(input_file))
-    assert os.path.exists(tmp_path / "cmds.txt")
-    assert os.path.exists(tmp_path / "file_1.txt")
-    assert not os.path.exists(tmp_path / "file_0.txt")
-    with open(tmp_path / "cmds.txt", "r") as f:
-        data = f.read()
+    with patch("subprocess.call") as mock_call:
+        w.compose_video(str(input_file))
+        assert os.path.exists(tmp_path / "cmds.txt")
+        assert os.path.exists(tmp_path / "file_1.txt")
+        assert not os.path.exists(tmp_path / "file_0.txt")
+        with open(tmp_path / "cmds.txt", "r") as f:
+            data = f.read()
 
-    assert "vid trim --input video3.mov" in data
-    assert f"vid concat {tmp_path/ 'file_1.txt'} --use-moviepy" in data
+        assert "vid trim --input video3.mov" in data
+        assert f"vid concat {tmp_path/ 'file_1.txt'} --use-moviepy" in data
