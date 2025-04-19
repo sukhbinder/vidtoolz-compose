@@ -36,6 +36,36 @@ IMG_2665.MOV
 #     compose_video(args.input, args.debug, args.valid)
 
 
+def parse_cmdline(cmdline_raw):
+    cmd_parts = cmdline_raw.strip().replace("#", "").split(",")
+    command = cmd_parts[0].strip()
+    args = []
+
+    for part in cmd_parts[1:]:
+        part = part.strip()
+
+        if "=" in part:
+            # key=value style → --key value
+            key, value = part.split("=", 1)
+            args.extend([f"--{key.strip()}", value.strip()])
+        elif part.startswith("--"):
+            # already a flag like --use-moviepy
+            args.append(part)
+        elif (
+            part.startswith('"')
+            and part.endswith('"')
+            or part.startswith("'")
+            and part.endswith("'")
+        ):
+            # positional arg with spaces or already quoted → leave as-is
+            args.append("'" + part + "'")
+        else:
+            # plain positional arg
+            args.append(part)
+
+    return [command] + args
+
+
 def compose_video(fname, debug=False, valid=False):
     """Compose Videos using the supplied compose_vid file"""
 
@@ -52,17 +82,11 @@ def compose_video(fname, debug=False, valid=False):
     commands = []
     for i, l in enumerate(lnos[:-1]):
         file = os.path.join(fpath, f"file_{i}.txt")
-        cmdline = lines[l].strip().replace("#", "").replace("=", " ").split(",")
-
+        # cmdline_raw = lines[l].strip().replace("#", "").replace("=", " ").split(",")
+        cmdline = parse_cmdline(lines[l])
         is_next_comment_line = lines[l + 1].startswith("#") and l + 1 <= len(lines)
         if not is_next_comment_line:
-            cmdline = (
-                [cmdline[0].strip()]
-                + [file]
-                + ["--" + cmd.strip() for cmd in cmdline[1:]]
-            )
-        else:
-            cmdline = [cmdline[0].strip()] + ["--" + cmd.strip() for cmd in cmdline[1:]]
+            cmdline = cmdline[:1] + [file] + cmdline[1:]
 
         cmdstr = " ".join(cmdline)
         cmdline2 = shlex.split(cmdstr)
@@ -105,7 +129,7 @@ def check_cmd(command):
         subprocess.check_output(command + ["--help"], shell=True)
     except subprocess.CalledProcessError as e:
         # If there's an error, report it to the user
-        print(f"Error running command '{command}' ")
+        print(f"Error running command '{' '.join(command)}' ")
 
 
 def create_parser(subparser):
