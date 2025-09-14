@@ -66,7 +66,7 @@ def parse_cmdline(cmdline_raw):
     return [command] + args
 
 
-def compose_video(fname, debug=False, valid=False):
+def compose_video(fname, debug=False, valid=False, skip=-1):
     """Compose Videos using the supplied compose_vid file"""
 
     # Parse the file
@@ -104,20 +104,31 @@ def compose_video(fname, debug=False, valid=False):
 
     # Run all commands in sequence
     failed = []
-    for cmd in commands:
+    skipped = []
+    for i, cmd in enumerate(commands):
         print(cmd)
-        if not debug and not valid:
-            try:
-                iret = subprocess.call(cmd)
-            except Exception as ex:
-                failed.append(cmd)
+        if i >= skip:
+            if not debug and not valid:
+                try:
+                    iret = subprocess.call(cmd)
+                except Exception as ex:
+                    failed.append(cmd)
+            else:
+                _ = check_cmd(cmd)
         else:
-            _ = check_cmd(cmd)
+            skipped.append(cmd)
 
     print("FAILED CMD")
     print("###" * 10)
     print("###" * 10)
     for i in failed:
+        print(i)
+    print("###" * 10)
+    print("###" * 10)
+    print("SKIPPED CMD")
+    print("###" * 10)
+    print("###" * 10)
+    for i in skipped:
         print(i)
     print("###" * 10)
     print("###" * 10)
@@ -149,6 +160,15 @@ def create_parser(subparser):
     parser.add_argument(
         "-v", "--valid", action="store_true", help="Will validate the cmds"
     )
+
+    parser.add_argument(
+        "-s",
+        "--skip",
+        type=int,
+        help="Start creating vids after skipping this many entries.",
+        default=-1,
+    )
+
     return parser
 
 
@@ -164,7 +184,7 @@ class ViztoolzPlugin:
 
     def run(self, args):
         # add actual call here
-        compose_video(args.input, args.debug, args.valid)
+        compose_video(args.input, args.debug, args.valid, args.skip)
 
     def hello(self, args):
         # this routine will be called when "vidtoolz "compose is called."
