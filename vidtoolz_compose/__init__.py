@@ -4,6 +4,74 @@ import os
 import shlex
 import argparse
 
+import subprocess
+import shlex
+import os
+import signal
+
+
+def smoke_test_command(cmd: str, timeout: int = 3) -> dict:
+    """
+    Runs a command for a short duration to verify it starts without error.
+
+    Args:
+        cmd (str): Command string to execute.
+        timeout (int): Seconds to allow the command to run.
+
+    Returns:
+        dict: {
+            "status": "running" | "success" | "error",
+            "returncode": int or None,
+            "stdout": str,
+            "stderr": str
+        }
+    """
+    try:
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            preexec_fn=os.setsid,  # start new process group (Unix/macOS)
+        )
+
+        try:
+            stdout, stderr = process.communicate(timeout=timeout)
+
+            # Process finished within timeout
+            if process.returncode == 0:
+                return {
+                    "status": "success",
+                    "returncode": process.returncode,
+                    "stdout": stdout.decode(errors="ignore"),
+                    "stderr": stderr.decode(errors="ignore"),
+                }
+            else:
+                return {
+                    "status": "error",
+                    "returncode": process.returncode,
+                    "stdout": stdout.decode(errors="ignore"),
+                    "stderr": stderr.decode(errors="ignore"),
+                }
+
+        except subprocess.TimeoutExpired:
+            # Still running after timeout → good sign
+            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+            return {
+                "status": "running",
+                "returncode": None,
+                "stdout": "",
+                "stderr": "",
+            }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "returncode": None,
+            "stdout": "",
+            "stderr": str(e),
+        }
+
+
 EXAMPLE_TEXT = """
 Input file which contains the composition of the videos.
 
@@ -100,7 +168,7 @@ def compose_video(fname, debug=False, valid=False, skip=-1):
 
     with open(os.path.join(fpath, "cmds.txt"), "w") as fout:
         for cmd in commands:
-            fout.write(" ".join(cmd) + "\n")
+            fout.write(shlex.join(cmd) + "\n")
 
     # Run all commands in sequence
     failed = []
@@ -135,12 +203,9 @@ def compose_video(fname, debug=False, valid=False, skip=-1):
 
 
 def check_cmd(command):
-    try:
-        # Run the command using subprocess and capture the output
-        subprocess.check_output(command + ["--help"], shell=True)
-    except subprocess.CalledProcessError as e:
-        # If there's an error, report it to the user
-        print(f"Error running command '{' '.join(command)}' ")
+    statusdict = smoke_test_command(command)
+    if statusdict["status"] == "error":
+        print(statusdict)
 
 
 def create_parser(subparser):
