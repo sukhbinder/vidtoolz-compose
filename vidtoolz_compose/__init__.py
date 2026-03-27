@@ -182,7 +182,7 @@ def compose_video(fname, debug=False, valid=False, skip=-1):
                 except Exception as ex:
                     failed.append(cmd)
             else:
-                _ = check_cmd(cmd)
+                _ = check_cmd(cmd, valid=valid)
         else:
             skipped.append(cmd)
 
@@ -202,10 +202,24 @@ def compose_video(fname, debug=False, valid=False, skip=-1):
     print("###" * 10)
 
 
-def check_cmd(command):
-    statusdict = smoke_test_command(command)
-    if statusdict["status"] == "error":
-        print(statusdict)
+def check_cmd(command, valid=False):
+    """
+    Check/validate a command.
+
+    Args:
+        command: Command list to check
+        valid: If True, run with --help flag using check_output; otherwise use smoke_test
+    """
+    if valid:
+        try:
+            cmd_with_help = command + ["--help"]
+            subprocess.check_output(cmd_with_help, shell=True)
+        except Exception as e:
+            print({"status": "error", "returncode": None, "stdout": "", "stderr": str(e)})
+    else:
+        statusdict = smoke_test_command(command)
+        if statusdict["status"] == "error":
+            print(statusdict)
 
 
 def create_parser(subparser):

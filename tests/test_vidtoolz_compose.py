@@ -217,4 +217,4 @@ video2.mov
 
         assert "vid trim --input video3.mov" in data
         assert f"vid concat {tmp_path/ 'file_2.txt'} --use-moviepy" in data
-        assert 'vid textclip "hello world" --duration 3' in data
+        assert "vid textclip '\"hello world\"' --duration 3" in data
