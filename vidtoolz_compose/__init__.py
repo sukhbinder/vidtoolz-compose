@@ -10,7 +10,7 @@ import os
 import signal
 
 
-def smoke_test_command(cmd: str, timeout: int = 3) -> dict:
+def smoke_test_command(cmd: str, timeout: int = 1) -> dict:
     """
     Runs a command for a short duration to verify it starts without error.
 
@@ -157,8 +157,13 @@ def compose_video(fname, debug=False, valid=False, skip=-1):
             cmdline = cmdline[:1] + [file] + cmdline[1:]
 
         cmdstr = " ".join(cmdline)
-        cmdline2 = shlex.split(cmdstr)
-        commands.append(cmdline2)
+        try:
+            cmdline2 = shlex.split(cmdstr)
+            commands.append(cmdline2)
+        except Exception as ex:
+            print(cmdstr)
+            print(ex)
+            raise
         # sellines = lines[l:lnos[i+1]]
         if not is_next_comment_line:
             with open(file, "w") as fout:
@@ -215,7 +220,9 @@ def check_cmd(command, valid=False):
             cmd_with_help = command + ["--help"]
             subprocess.check_output(cmd_with_help, shell=True)
         except Exception as e:
-            print({"status": "error", "returncode": None, "stdout": "", "stderr": str(e)})
+            print(
+                {"status": "error", "returncode": None, "stdout": "", "stderr": str(e)}
+            )
     else:
         statusdict = smoke_test_command(command)
         if statusdict["status"] == "error":
