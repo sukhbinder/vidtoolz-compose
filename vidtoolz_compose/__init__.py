@@ -152,7 +152,7 @@ def compose_video(fname, debug=False, valid=False, skip=-1):
         file = os.path.join(fpath, f"file_{i}.txt")
         # cmdline_raw = lines[l].strip().replace("#", "").replace("=", " ").split(",")
         cmdline = parse_cmdline(lines[l])
-        is_next_comment_line = lines[l + 1].startswith("#") and l + 1 <= len(lines)
+        is_next_comment_line = (l + 1 < len(lines)) and lines[l + 1].startswith("#")
         if not is_next_comment_line:
             cmdline = cmdline[:1] + [file] + cmdline[1:]
 
@@ -168,7 +168,10 @@ def compose_video(fname, debug=False, valid=False, skip=-1):
         if not is_next_comment_line:
             with open(file, "w") as fout:
                 sellines = lines[l + 1 : lnos[i + 1]]
-                sellines[-1] = sellines[-1].strip()
+                try:
+                    sellines[-1] = sellines[-1].strip()
+                except IndexError:
+                    pass
                 fout.writelines(sellines)
 
     with open(os.path.join(fpath, "cmds.txt"), "w") as fout:
@@ -184,6 +187,8 @@ def compose_video(fname, debug=False, valid=False, skip=-1):
             if not debug and not valid:
                 try:
                     iret = subprocess.call(cmd)
+                    if iret != 0:
+                        failed.append((cmd, iret))
                 except Exception as ex:
                     failed.append(cmd)
             else:
